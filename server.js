@@ -1,6 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { Telegraf } = require('telegraf');
+const express = require('express');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
@@ -47,3 +48,7 @@ console.log("Bot started");
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+const app = express();
+app.get('/', (req,res)=> res.send('Bot is running!'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=> console.log(`Server running on ${PORT}`));
