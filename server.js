@@ -16,7 +16,7 @@ const Movie = mongoose.model('Movie', movieSchema);
 
 const bot = new Telegraf(BOT_TOKEN);
 
-bot.start((ctx)=>ctx.reply("Bot is running!"));
+bot.start((ctx)=>ctx.reply("🎬 Welcome to Movie-Adda!\n\nGroup me movie ka naam bhejo, mai file bhej dunga."));
 
 bot.on('channel_post', async (ctx) => {
   try {
