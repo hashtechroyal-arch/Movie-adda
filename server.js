@@ -13,34 +13,55 @@ app.use(express.json());
 app.use(bot.webhookCallback(`/bot${BOT_TOKEN}`));
 
 async function saveMovie(ctx){
-  const msg = ctx.channelPost || ctx.message;
-  const file_id = msg.document?.file_id || msg.video?.file_id || msg.document?.file_id;
-  const caption = msg.caption || msg.text || "";
-  console.log("FILE MILA:", file_id ? "YES" : "NO", " Caption:", caption);
-  if(!file_id) return;
-  const title = caption.toLowerCase().trim();
-  await Movie.findOneAndUpdate({caption},{title,file_id,caption},{upsert:true,new:true});
-  console.log("SAVED OK:", caption);
+  try{
+    const msg = ctx.channelPost || ctx.message;
+    const file_id = msg.document?.file_id || msg.video?.file_id;
+    const caption = msg.caption || msg.text || "";
+    console.log("FILE MILA:", file_id ? "YES" : "NO", "Caption:", caption);
+    if(!file_id || !caption){
+      console.log("SKIP: file ya caption missing");
+      return;
+    }
+    const title = caption.toLowerCase().trim().split("\n")[0];
+    await Movie.findOneAndUpdate(
+      { title: title },
+      { title: title, file_id: file_id, caption: caption },
+      { upsert: true, new: true }
+    );
+    console.log("SAVED OK:", title);
+  }catch(e){
+    console.log("SAVE ERROR:", e.message);
+  }
 }
 
 bot.on('channel_post', saveMovie);
 bot.on('message', saveMovie);
 
 bot.on('text', async (ctx) => {
-  if(ctx.chat.type === 'channel') return;
-  if(ctx.message.text.startsWith('/')) return;
-  const q = ctx.message.text.toLowerCase();
-  console.log("Search:", q);
-  const movie = await Movie.findOne({ title: { $regex: q } });
-  if(movie){ await ctx.replyWithDocument(movie.file_id, {caption: movie.caption}); console.log("Bhej diya:", q); }
-  else { console.log("Nahi mili:", q); }
+  if(ctx.channelPost) return;
+  const query = ctx.message.text.toLowerCase().trim();
+  if(!query) return;
+  console.log("SEARCH AAYA:", query);
+  const movies = await Movie.find({ title: { $regex: query, $options: 'i' } }).limit(5);
+  if(movies.length === 0){
+    return ctx.reply("Movie nahi mili: " + query);
+  }
+  for(let m of movies){
+    try{
+      await ctx.replyWithDocument(m.file_id, { caption: m.caption });
+    }catch(e){
+      await ctx.replyWithVideo(m.file_id, { caption: m.caption });
+    }
+  }
 });
 
-app.get('/', (req,res)=> res.send("Bot Live"));
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, async ()=>{
-  console.log("Server running on", PORT);
-  await bot.telegram.deleteWebhook({drop_pending_updates:true});
-  await bot.telegram.setWebhook(`${URL}/bot${BOT_TOKEN}`);
-  console.log("Webhook Set OK");
+app.get('/', (req,res)=> res.send('Bot Live'));
+app.listen(10000, async () => {
+  console.log("Server running on 10000");
+  try{
+    await bot.telegram.setWebhook(`${URL}/bot${BOT_TOKEN}`);
+    console.log("Webhook Set OK");
+  }catch(e){
+    console.log("Webhook Fail", e.message);
+  }
 });
