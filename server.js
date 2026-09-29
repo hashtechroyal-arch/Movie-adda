@@ -1,67 +1,56 @@
-const mongoose = require('mongoose');
-const { Telegraf } = require('telegraf');
-const express = require('express');
+import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import { Telegraf } from 'telegraf';
+
+dotenv.config();
 const app = express();
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
-const URL = process.env.RENDER_EXTERNAL_URL;
-const bot = new Telegraf(BOT_TOKEN);
-const movieSchema = new mongoose.Schema({ title: String, file_id: String, caption: String });
+const bot = new Telegraf(process.env.BOT_TOKEN);
+const CHANNEL_ID = process.env.CHANNEL_ID;
+
+// MongoDB Schema
+const movieSchema = new mongoose.Schema({
+  file_id: String,
+  file_name: String,
+  caption: String
+});
 const Movie = mongoose.model('Movie', movieSchema);
-mongoose.connect(MONGO_URI).then(()=>console.log("Mongo Connected")).catch(e=>console.log("Mongo Fail",e.message));
-app.use(express.json());
-app.use(bot.webhookCallback(`/bot${BOT_TOKEN}`));
 
-async function saveMovie(ctx){
-  try{
-    const msg = ctx.channelPost || ctx.message;
-    const file_id = msg.document?.file_id || msg.video?.file_id;
-    const caption = msg.caption || msg.text || "";
-    console.log("FILE MILA:", file_id ? "YES" : "NO", "Caption:", caption);
-    if(!file_id || !caption){
-      console.log("SKIP: file ya caption missing");
-      return;
-    }
-    const title = caption.toLowerCase().trim().split("\n")[0];
-    await Movie.findOneAndUpdate(
-      { title: title },
-      { title: title, file_id: file_id, caption: caption },
-      { upsert: true, new: true }
-    );
-    console.log("SAVED OK:", title);
-  }catch(e){
-    console.log("SAVE ERROR:", e.message);
-  }
-}
+// Jab channel me movie aaye toh save kare
+bot.on('channel_post', async (ctx) => {
+  try {
+    const post = ctx.channelPost;
+    if (!post) return;
+    let file = post.document || post.video;
+    if (!file) return;
+    
+    let name = file.file_name || post.caption || "movie";
+    await Movie.create({
+      file_id: file.file_id,
+      file_name: name.toLowerCase(),
+      caption: post.caption || ""
+    });
+    console.log("Saved:", name);
+  } catch(e){ console.log(e) }
+});
 
-bot.on('channel_post', saveMovie);
-bot.on('message', saveMovie);
-
+// Jab group me koi movie ka naam likhe
 bot.on('text', async (ctx) => {
-  if(ctx.channelPost) return;
-  const query = ctx.message.text.toLowerCase().trim();
-  if(!query) return;
-  console.log("SEARCH AAYA:", query);
-  const movies = await Movie.find({ title: { $regex: query, $options: 'i' } }).limit(5);
-  if(movies.length === 0){
-    return ctx.reply("Movie nahi mili: " + query);
-  }
-  for(let m of movies){
-    try{
-      await ctx.replyWithDocument(m.file_id, { caption: m.caption });
-    }catch(e){
-      await ctx.replyWithVideo(m.file_id, { caption: m.caption });
-    }
+  const query = ctx.message.text.toLowerCase();
+  if(query.startsWith('/')) return;
+
+  const results = await Movie.find({
+    file_name: { $regex: query, $options: 'i' }
+  }).limit(10);
+
+  if(results.length === 0) return;
+
+  for(let m of results){
+    await ctx.replyWithDocument(m.file_id, {caption: m.caption}).catch(()=>{});
   }
 });
 
-app.get('/', (req,res)=> res.send('Bot Live'));
-app.listen(10000, async () => {
-  console.log("Server running on 10000");
-  try{
-    await bot.telegram.setWebhook(`${URL}/bot${BOT_TOKEN}`);
-    console.log("Webhook Set OK");
-  }catch(e){
-    console.log("Webhook Fail", e.message);
-  }
-});
+mongoose.connect(process.env.MONGODB_URI).then(()=>console.log("Mongo Connected"));
+bot.launch();
+app.get('/', (req,res)=>res.send('Movie Bot Live'));
+app.listen(process.env.PORT || 3000);
