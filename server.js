@@ -4,71 +4,53 @@ import dotenv from 'dotenv';
 import { Telegraf } from 'telegraf';
 
 dotenv.config();
-
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const CHANNEL_ID = process.env.CHANNEL_ID;
 
-const CHANNEL_USERNAME = "@WebNetflixprobot";
-const CHANNEL_LINK = "https://t.me/WebNetflixprobot";
-
+// MongoDB Schema
 const movieSchema = new mongoose.Schema({
   file_id: String,
   file_name: String,
-  caption: String,
-  keyword: String
+  caption: String
 });
 const Movie = mongoose.model('Movie', movieSchema);
 
+// Jab channel me movie aaye toh save kare
 bot.on('channel_post', async (ctx) => {
   try {
-    const file = ctx.channelPost.document || ctx.channelPost.video;
+    const post = ctx.channelPost;
+    if (!post) return;
+    let file = post.document || post.video;
     if (!file) return;
-    const caption = ctx.channelPost.caption || file.file_name || "Movie";
-    const keyword = file.file_name.toLowerCase();
-    await new Movie({ file_id: file.file_id, file_name: file.file_name, caption: caption, keyword: keyword }).save();
-    console.log("Saved:", file.file_name);
-  } catch (e) {
-    console.log(e.message);
+    
+    let name = file.file_name || post.caption || "movie";
+    await Movie.create({
+      file_id: file.file_id,
+      file_name: name.toLowerCase(),
+      caption: post.caption || ""
+    });
+    console.log("Saved:", name);
+  } catch(e){ console.log(e) }
+});
+
+// Jab group me koi movie ka naam likhe
+bot.on('text', async (ctx) => {
+  const query = ctx.message.text.toLowerCase();
+  if(query.startsWith('/')) return;
+
+  const results = await Movie.find({
+    file_name: { $regex: query, $options: 'i' }
+  }).limit(10);
+
+  if(results.length === 0) return;
+
+  for(let m of results){
+    await ctx.replyWithDocument(m.file_id, {caption: m.caption}).catch(()=>{});
   }
 });
 
-bot.on('text', async (ctx) => {
-  const searchText = ctx.message.text.toLowerCase();
-  if (searchText.startsWith('/')) return;
-  try {
-    const member = await ctx.telegram.getChatMember(CHANNEL_USERNAME, ctx.from.id);
-    if (member.status === 'left' || member.status === 'kicked') {
-      return ctx.reply(`⚠️ Bhai pehle channel join karo tabhi movie milegi!`, {
-        reply_markup: { inline_keyboard: [[{ text: "📢 Web Netflix Join Karo", url: CHANNEL_LINK }], [{ text: "✅ Join Kar Liya", callback_data: `check_${searchText}` }]] }
-      });
-    }
-  } catch (e) { console.log("Join check:", e.message); }
-  const movie = await Movie.findOne({ keyword: { $regex: searchText, $options: 'i' } });
-  if (!movie) return ctx.reply("😔 Ye movie nahi mili bhai!");
-  const finalCaption = `${movie.caption}\n\n🎬 Provide by Bunti Royal\n📢 Join : ${CHANNEL_LINK}\n\n⏰ NOTE: Ye file 10 min me auto-delete ho jayegi!`;
-  const sent = await ctx.replyWithDocument(movie.file_id, { caption: finalCaption, reply_markup: { inline_keyboard: [[{ text: "📢 Web Netflix Join Karo", url: CHANNEL_LINK }]] } });
-  setTimeout(async () => {
-    try { await ctx.telegram.deleteMessage(ctx.chat.id, sent.message_id); } catch (e) {}
-  }, 10 * 60 * 1000);
-});
-
-bot.action(/check_(.*)/, async (ctx) => {
-  const searchText = ctx.match[1];
-  try {
-    const member = await ctx.telegram.getChatMember(CHANNEL_USERNAME, ctx.from.id);
-    if (member.status === 'left' || member.status === 'kicked') return ctx.answerCbQuery("Pehle join karo bhai!");
-    await ctx.deleteMessage();
-    const movie = await Movie.findOne({ keyword: { $regex: searchText, $options: 'i' } });
-    if (movie) {
-      const finalCaption = `${movie.caption}\n\n🎬 Provide by Bunti Royal\n📢 Join : ${CHANNEL_LINK}\n\n⏰ NOTE: Ye file 10 min me auto-delete ho jayegi!`;
-      const sent = await ctx.replyWithDocument(movie.file_id, { caption: finalCaption, reply_markup: { inline_keyboard: [[{ text: "📢 Web Netflix Join Karo", url: CHANNEL_LINK }]] } });
-      setTimeout(async () => { try { await ctx.telegram.deleteMessage(ctx.chat.id, sent.message_id); } catch (e) {} }, 10 * 60 * 1000);
-    }
-  } catch (e) {}
-});
-
-mongoose.connect(process.env.MONGO_URI).then(() => {
-  console.log("Mongo Connected");
-  bot.launch();
-  app.listen(process.env.PORT || 3000, () => console.log("Server running"));
-});
+mongoose.connect(process.env.MONGODB_URI).then(()=>console.log("Mongo Connected"));
+bot.launch();
+app.get('/', (req,res)=>res.send('Movie Bot Live'));
+app.listen(process.env.PORT || 3000);
