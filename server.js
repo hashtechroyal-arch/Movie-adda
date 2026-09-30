@@ -42,5 +42,5 @@ bot.on('text', async (ctx) => {
   );
 });
 
-bot.launch();
+bot.launch({ dropPendingUpdates: true });
 console.log('NeoPrime Bot Started with Logo 👑✅');
