@@ -1,49 +1,50 @@
-const { Telegraf, Markup } = require('telegraf');
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const { Telegraf } = require('telegraf');
 
-const BOT_TOKEN = '8753947646:AAGA8NNHJeKGOReVLITOAv6mOkxA5Vnxpmw';
-const CHANNEL_USERNAME = '@Neoprimemovie';
-const CHANNEL_LINK = 'https://t.me/Neoprimemovie';
+const app = express();
+app.use(express.json());
 
-// ✅ TERA NEOPRIME LOGO - FINAL
-const WELCOME_PHOTO = 'https://i.ibb.co/qL5Cftzm/Chat-GPT-Image-Sep-30-2026-01-35-08-AM.png';
+// MongoDB Connect
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('Mongo Connected ✅'))
+  .catch((err) => console.log('Mongo Error:', err.message));
 
-const bot = new Telegraf(BOT_TOKEN);
+// Bot Setup
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// /start pe logo ke sath welcome
-bot.start(async (ctx) => {
-  await ctx.replyWithPhoto(
-    { url: WELCOME_PHOTO },
-    {
-      caption: `👑 *Welcome to NeoPrime* 👑\n\n🎬 *Streaming Beyond Limits* 🎬\n\n✅ Latest Movies | Web Series | Netflix | Prime\n✅ Hindi Dubbed | 480p | 720p | 1080p\n\n🔍 *Koi bhi movie ka naam likho, mai turant bhej dunga!*\n\nExample: \`Animal, Jawan, Leo\``,
-      parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.url('📢 Join NeoPrime Channel', CHANNEL_LINK)],
-        [Markup.button.callback('🔍 Search Movie', 'search')]
-      ])
-    }
-  );
+// --- Yahan tumhara purana bot ka code aayega ---
+// Jaise bot.start, bot.on, bot.command etc
+// Agar tumhare paas commands hain toh yahan paste karna
+
+bot.start((ctx) => ctx.reply('NeoPrime Bot Started with Logo 👑 ✅'));
+
+// --- Bot code khatam ---
+
+// Express Server - Render ke liye zaruri
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => res.send('Bot is Running'));
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
-bot.on('text', async (ctx) => {
-  const query = ctx.message.text;
-  if (query.startsWith('/')) return;
-  
-  await ctx.reply(`🔍 *${query}* search ho raha hai...`, { parse_mode: 'Markdown' });
-  
-  await ctx.reply(
-    `✅ *${query}* ke liye click karo:`,
-    {
-      parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.url(`🎬 ${query} - Dekho`, CHANNEL_LINK)],
-        [Markup.button.url('📢 All Movies', CHANNEL_LINK)]
-      ])
-    }
-  );
-});
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
+// Final Launch - Sirf ek baar, 409 fix ke saath
 (async () => {
-  await bot.telegram.deleteWebhook();
-  await bot.launch({ dropPendingUpdates: true });
-  console.log('NeoPrime Bot Started with Logo 👑✅');
+  try {
+    await bot.telegram.deleteWebhook({ dropPendingUpdates: true });
+    console.log('Old webhook deleted');
+  } catch (e) {
+    console.log('No webhook to delete');
+  }
+  try {
+    await bot.launch({ dropPendingUpdates: true });
+    console.log('NeoPrime Bot Started with Logo 👑 ✅');
+  } catch (err) {
+    console.log('Launch failed:', err.message);
+  }
 })();
