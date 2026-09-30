@@ -1,5 +1,4 @@
-import os
-import threading
+import os, threading
 from flask import Flask
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -10,24 +9,30 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bunti Royal Bot is Live 24x7!"
+    return "Bunti Royal Bot Live"
 
 @bot.message_handler(func=lambda m: True)
-def handle_all(message):
-    query = message.text
-    text = f"""🅱️🆄🅽🆃🅸 🆁🅾🆈🅰🅻
-{query}
-
-📁 HERE I FOUND
-{query.upper()}
-
-👑 Provide By Bunti Royal"""
+def handle(m):
+    q = m.text.strip()
+    # Royal Design exactly like your screenshot
+    caption = f"🅱️🆄🅽🆃🅸 🆁🅾🆈🅰🅻\n{q}\n\n📁 HERE I FOUND\n{q.upper()}\n\n👑 Provide By Bunti Royal"
 
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton(f"🔗 3810.7 MB> {query} 2025 1080p 10bit", callback_data="1"))
-    markup.add(InlineKeyboardButton(f"🔗 3158.66 MB> {query} 2025 1080p...", callback_data="2"))
-    
-    bot.reply_to(message, text, reply_markup=markup)
+    markup.row(InlineKeyboardButton(f"🔗 3810.7 MB> {q} (2025) 1080p 10bit", callback_data=f"f1|{q}"))
+    markup.row(InlineKeyboardButton(f"🔗 3158.66 MB> {q} 2025 1080p 10bit", callback_data=f"f2|{q}"))
+    markup.row(InlineKeyboardButton(f"🔗 3810.7 MB> {q} (2025) 1080p 10bit", callback_data=f"f3|{q}"))
+
+    bot.reply_to(m, caption, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: True)
+def callback(c):
+    try:
+        _, q = c.data.split('|',1)
+    except:
+        q = c.data
+    # File jaisa message jo screenshot me neeche dikh raha hai
+    bot.send_message(c.message.chat.id, f"🎬 {q} 2025 1080p 10bit.DS4K.NF.WEBRip.Hindi.DD.mkv\n\n👑 Provide By Bunti Royal")
+    bot.answer_callback_query(c.id, "Link Ready ✅")
 
 def run_bot():
     bot.infinity_polling()
