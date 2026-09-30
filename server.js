@@ -48,20 +48,19 @@ bot.action('search_movie', (ctx) => {
   ctx.reply('🔍 Movie ka naam likho, jaise: Animal');
 });
 
-// Movie Search Logic
+// Movie Search Logic - Private + Group dono me
 bot.on('text', async (ctx) => {
   const query = ctx.message.text;
   if (query.startsWith('/')) return;
-
-  await ctx.reply(`🔍 *${query}* search ho raha hai...`, { parse_mode: 'Markdown' });
-
-  await ctx.reply(
-    `✅ *${query}* ke liye click karo:`,
-    {
+  if (query.length < 2) return;
+  const cleanQuery = query.replace(/@\w+/g, '').trim();
+  if (!cleanQuery) return;
+  await ctx.reply(`🔍 *${cleanQuery}* search ho raha hai...`, { parse_mode: 'Markdown' });
+  await ctx.reply(`✅ *${cleanQuery}* ke liye click karo:`, {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
-        [Markup.button.url(`🎬 ${query} - Dekho`, CHANNEL_LINK)],
-        [Markup.button.url('📢 All Movies Channel', CHANNEL_LINK)]
+        [Markup.button.url(`🎬 ${cleanQuery} - Dekho`, CHANNEL_LINK)],
+        [Markup.button.url('📢 All Movies', CHANNEL_LINK)]
       ])
     }
   );
