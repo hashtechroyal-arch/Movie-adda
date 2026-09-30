@@ -3,7 +3,7 @@ from flask import Flask
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = os.environ.get("BOT_TOKEN").strip()
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
