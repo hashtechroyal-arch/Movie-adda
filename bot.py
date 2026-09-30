@@ -1,15 +1,20 @@
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+import threading
+from flask import Flask
+import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Apna channel ID yahan daalna jahan files rakhi hain
-CHANNEL_ID = -1003711188445 # <-- isko apna channel ID se change karna
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+bot = telebot.TeleBot(BOT_TOKEN)
+app = Flask(__name__)
 
-async def search_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.message.text
-    if len(query) < 2: return
+@app.route('/')
+def home():
+    return "Bunti Royal Bot is Live 24x7!"
 
-    # Yahi tera wala Royal look hai
+@bot.message_handler(func=lambda m: True)
+def handle_all(message):
+    query = message.text
     text = f"""🅱️🆄🅽🆃🅸 🆁🅾🆈🅰🅻
 {query}
 
@@ -18,16 +23,14 @@ async def search_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 👑 Provide By Bunti Royal"""
 
-    # File ke buttons - size ke saath
-    keyboard = [
-        [InlineKeyboardButton("🔗 3810.7 MB> Jolly LLB 3 (2025) 1080p 10bit", callback_data="file1")],
-        [InlineKeyboardButton("🔗 3158.66 MB> Jolly.LLB.3.2025.1080p.10bit...", callback_data="file2")],
-        [InlineKeyboardButton("🔗 3810.7 MB> Jolly LLB 3 (2025) 1080p 10bit", callback_data="file3")],
-    ]
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton(f"🔗 3810.7 MB> {query} 2025 1080p 10bit", callback_data="1"))
+    markup.add(InlineKeyboardButton(f"🔗 3158.66 MB> {query} 2025 1080p...", callback_data="2"))
     
-    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    bot.reply_to(message, text, reply_markup=markup)
 
-app = ApplicationBuilder().token(os.environ.get("BOT_TOKEN")).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_movie))
-print("Royal Bot ON hai...")
-app.run_polling()
+def run_bot():
+    bot.infinity_polling()
+
+threading.Thread(target=run_bot).start()
+app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
