@@ -42,5 +42,8 @@ bot.on('text', async (ctx) => {
   );
 });
 
-bot.launch({ dropPendingUpdates: true });
-console.log('NeoPrime Bot Started with Logo 👑✅');
+(async () => {
+  await bot.telegram.deleteWebhook();
+  await bot.launch({ dropPendingUpdates: true });
+  console.log('NeoPrime Bot Started with Logo 👑✅');
+})();
