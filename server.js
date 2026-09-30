@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const { Telegraf } = require('telegraf');
@@ -6,42 +7,56 @@ const app = express();
 app.use(express.json());
 
 // MongoDB Connect
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Mongo Connected ✅'))
-  .catch((err) => console.log('Mongo Error:', err.message));
+const MONGO_URI = process.env.MONGO_URI;
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI)
+    .then(() => console.log('Mongo Connected ✅'))
+    .catch((err) => console.log('Mongo Error:', err.message));
+} else {
+  console.log('MONGO_URI not set, skipping mongo connect');
+}
 
 // Bot Setup
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const BOT_TOKEN = process.env.BOT_TOKEN;
+if (!BOT_TOKEN) {
+  console.log('BOT_TOKEN not set! Set it in Render Environment');
+}
+const bot = new Telegraf(BOT_TOKEN);
 
-// --- Yahan tumhara purana bot ka code aayega ---
-// Jaise bot.start, bot.on, bot.command etc
-// Agar tumhare paas commands hain toh yahan paste karna
-
+// ---- TERA BOT KA CODE YAHAN DAAL SAKTA HAI ----
+// Example:
 bot.start((ctx) => ctx.reply('NeoPrime Bot Started with Logo 👑 ✅'));
+// Yahan apne saare bot.command / bot.on wale code daal de
+// -----------------------------------------------
 
-// --- Bot code khatam ---
+// Express route - Render health check ke liye
+app.get('/', (req, res) => {
+  res.send('NeoPrime Bot is Running 👑');
+});
 
-// Express Server - Render ke liye zaruri
+// Server start - Render ke liye sabse zaruri
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Bot is Running'));
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+// Graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-// Final Launch - Sirf ek baar, 409 fix ke saath
+// Bot launch - Sirf ek hi baar, 409 fix ke saath
 (async () => {
   try {
     await bot.telegram.deleteWebhook({ dropPendingUpdates: true });
     console.log('Old webhook deleted');
   } catch (e) {
-    console.log('No webhook to delete');
+    console.log('No webhook to delete or error:', e.message);
   }
   try {
-    await bot.launch({ dropPendingUpdates: true });
+    await bot.launch({ 
+      dropPendingUpdates: true,
+      allowedUpdates: [] 
+    });
     console.log('NeoPrime Bot Started with Logo 👑 ✅');
   } catch (err) {
     console.log('Launch failed:', err.message);
