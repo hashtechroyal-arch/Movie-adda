@@ -44,21 +44,21 @@ app.listen(PORT, () => {
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-// Bot launch - Sirf ek hi baar, 409 fix ke saath
-(async () => {
+// Bot launch - 409 fix final
+const launchBot = async (retries = 3) => {
   try {
     await bot.telegram.deleteWebhook({ dropPendingUpdates: true });
     console.log('Old webhook deleted');
-  } catch (e) {
-    console.log('No webhook to delete or error:', e.message);
-  }
-  try {
-    await bot.launch({ 
-      dropPendingUpdates: true,
-      allowedUpdates: [] 
-    });
+    await new Promise(r => setTimeout(r, 3000));
+    await bot.launch({ dropPendingUpdates: true });
     console.log('NeoPrime Bot Started with Logo 👑 ✅');
   } catch (err) {
+    if (err.message.includes('409') && retries > 0) {
+      console.log(`409 Conflict, retrying... ${retries} left`);
+      await new Promise(r => setTimeout(r, 5000));
+      return launchBot(retries - 1);
+    }
     console.log('Launch failed:', err.message);
   }
-})();
+};
+launchBot();
