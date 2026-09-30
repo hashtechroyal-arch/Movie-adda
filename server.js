@@ -1,56 +1,46 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import { Telegraf } from 'telegraf';
+const { Telegraf, Markup } = require('telegraf');
 
-dotenv.config();
-const app = express();
-const bot = new Telegraf(process.env.BOT_TOKEN);
-const CHANNEL_ID = process.env.CHANNEL_ID;
+const BOT_TOKEN = '8753947646:AAGA8NNHJeKGOReVLITOAv6mOkxA5Vnxpmw';
+const CHANNEL_USERNAME = '@Neoprimemovie';
+const CHANNEL_LINK = 'https://t.me/Neoprimemovie';
 
-// MongoDB Schema
-const movieSchema = new mongoose.Schema({
-  file_id: String,
-  file_name: String,
-  caption: String
-});
-const Movie = mongoose.model('Movie', movieSchema);
+// ✅ TERA NEOPRIME LOGO - FINAL
+const WELCOME_PHOTO = 'https://i.ibb.co/qL5Cftzm/Chat-GPT-Image-Sep-30-2026-01-35-08-AM.png';
 
-// Jab channel me movie aaye toh save kare
-bot.on('channel_post', async (ctx) => {
-  try {
-    const post = ctx.channelPost;
-    if (!post) return;
-    let file = post.document || post.video;
-    if (!file) return;
-    
-    let name = file.file_name || post.caption || "movie";
-    await Movie.create({
-      file_id: file.file_id,
-      file_name: name.toLowerCase(),
-      caption: post.caption || ""
-    });
-    console.log("Saved:", name);
-  } catch(e){ console.log(e) }
+const bot = new Telegraf(BOT_TOKEN);
+
+// /start pe logo ke sath welcome
+bot.start(async (ctx) => {
+  await ctx.replyWithPhoto(
+    { url: WELCOME_PHOTO },
+    {
+      caption: `👑 *Welcome to NeoPrime* 👑\n\n🎬 *Streaming Beyond Limits* 🎬\n\n✅ Latest Movies | Web Series | Netflix | Prime\n✅ Hindi Dubbed | 480p | 720p | 1080p\n\n🔍 *Koi bhi movie ka naam likho, mai turant bhej dunga!*\n\nExample: \`Animal, Jawan, Leo\``,
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([
+        [Markup.button.url('📢 Join NeoPrime Channel', CHANNEL_LINK)],
+        [Markup.button.callback('🔍 Search Movie', 'search')]
+      ])
+    }
+  );
 });
 
-// Jab group me koi movie ka naam likhe
 bot.on('text', async (ctx) => {
-  const query = ctx.message.text.toLowerCase();
-  if(query.startsWith('/')) return;
-
-  const results = await Movie.find({
-    file_name: { $regex: query, $options: 'i' }
-  }).limit(10);
-
-  if(results.length === 0) return;
-
-  for(let m of results){
-    await ctx.replyWithDocument(m.file_id, {caption: m.caption}).catch(()=>{});
-  }
+  const query = ctx.message.text;
+  if (query.startsWith('/')) return;
+  
+  await ctx.reply(`🔍 *${query}* search ho raha hai...`, { parse_mode: 'Markdown' });
+  
+  await ctx.reply(
+    `✅ *${query}* ke liye click karo:`,
+    {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([
+        [Markup.button.url(`🎬 ${query} - Dekho`, CHANNEL_LINK)],
+        [Markup.button.url('📢 All Movies', CHANNEL_LINK)]
+      ])
+    }
+  );
 });
 
-mongoose.connect(process.env.MONGODB_URI).then(()=>console.log("Mongo Connected"));
 bot.launch();
-app.get('/', (req,res)=>res.send('Movie Bot Live'));
-app.listen(process.env.PORT || 3000);
+console.log('NeoPrime Bot Started with Logo 👑✅');
