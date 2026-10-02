@@ -7,7 +7,7 @@ const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect(process.env.MONGODB_URL).then(()=> console.log("MongoDB Connected ✅"));
+mongoose.connect(process.env.MONGODB_URL).then(()=> console.log("MongoDB Connected"));
 
 const movieSchema = new mongoose.Schema({
   name: String,
@@ -22,52 +22,39 @@ bot.on(['document', 'video'], async (ctx) => {
   const fileId = file.file_id;
   const fileName = file.file_name || "movie";
   const caption = ctx.message.caption || fileName;
-  await Movie.create({
-    name: (fileName + " " + caption).toLowerCase(),
-    fileId, caption, fileName
-  });
-  console.log("Saved:", fileName);
-  ctx.reply(`✅ Saved: ${fileName}`);
+  await Movie.create({ name: (fileName + " " + caption).toLowerCase(), fileId, caption, fileName });
+  ctx.reply(`Saved: ${fileName}`);
 });
 
 bot.on('channel_post', async (ctx) => {
   const file = ctx.channelPost.document || ctx.channelPost.video;
   if(!file) return;
-  const fileId = file.file_id;
-  const fileName = file.file_name || "movie";
-  const caption = ctx.channelPost.caption || fileName;
-  await Movie.create({
-    name: (fileName + " " + caption).toLowerCase(),
-    fileId, caption, fileName
+  await Movie.create({ 
+    name: (file.file_name + " " + (ctx.channelPost.caption || "")).toLowerCase(), 
+    fileId: file.file_id, 
+    caption: ctx.channelPost.caption || file.file_name, 
+    fileName: file.file_name || "movie" 
   });
-  console.log("Saved from channel:", fileName);
 });
 
-bot.start((ctx) => ctx.reply('R👑oyal Bot Live Hai! Koi bhi movie ka naam likho'));
+bot.start((ctx) => ctx.reply('Bot Live Hai!'));
 
 bot.on('text', async (ctx) => {
   if(ctx.message.text.startsWith('/')) return;
-  const search = ctx.message.text.toLowerCase();
-  const movies = await Movie.find({ name: { $regex: search, $options: 'i' } }).limit(10);
-  
-  if (movies.length === 0) {
-    return ctx.reply('❌ Movie nahi mili');
-  }
-
+  const movies = await Movie.find({ name: { $regex: ctx.message.text.toLowerCase(), $options: 'i' } }).limit(5);
+  if(movies.length === 0) return ctx.reply('Movie nahi mili');
   for (let movie of movies) {
     const sent = await ctx.replyWithDocument(movie.fileId, {
-      caption: `${movie.fileName}\n\n${movie.caption}\n\n⏳ 10 min me delete ho jayegi\n\n⚡ Provide By Bunti\n      👑\n      R oyal`
+      caption: `${movie.caption}\n\n⏳ 10 min me delete\n\n⚡ Provide By Bunti R👑oyal`
     });
-    setTimeout(async () => {
-      try { await ctx.deleteMessage(sent.message_id); } catch (e) {}
-    }, 10 * 60 * 1000);
+    setTimeout(() => { ctx.deleteMessage(sent.message_id).catch(()=>{}); }, 600000);
   }
 });
 
 (async () => {
   await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-  bot.launch().then(() => console.log("Royal Bot Started..."));
+  bot.launch();
 })();
 
-app.get('/', (req, res) => res.send('Bot is Live 24x7 - Bunti R Royal'));
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+app.get('/', (req, res) => res.send('Bot Live'));
+app.listen(PORT);
