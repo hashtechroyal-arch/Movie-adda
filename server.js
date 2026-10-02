@@ -97,6 +97,9 @@ bot.action(/sendall_(.+)/, async (ctx) => {
   }
 });
 
-bot.launch().then(() => console.log("Royal Bot Started..."));
+(async () => {
+  await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+  bot.launch().then(() => console.log("Royal Bot Started..."));
+})();
 app.get('/', (req, res) => res.send('Bot is Live 24x7 - Bunti Royal'));
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
