@@ -26,6 +26,7 @@ bot.on(['document', 'video'], async (ctx) => {
     name: (fileName + " " + caption).toLowerCase(),
     fileId, caption, fileName
   });
+  console.log("Saved:", fileName);
   ctx.reply(`✅ Saved: ${fileName}`);
 });
 
@@ -39,9 +40,10 @@ bot.on('channel_post', async (ctx) => {
     name: (fileName + " " + caption).toLowerCase(),
     fileId, caption, fileName
   });
+  console.log("Saved from channel:", fileName);
 });
 
-bot.start((ctx) => ctx.reply('R👑oyal Bot Live Hai!'));
+bot.start((ctx) => ctx.reply('R👑oyal Bot Live Hai! Koi bhi movie ka naam likho'));
 
 bot.on('text', async (ctx) => {
   if(ctx.message.text.startsWith('/')) return;
@@ -56,7 +58,6 @@ bot.on('text', async (ctx) => {
     const sent = await ctx.replyWithDocument(movie.fileId, {
       caption: `${movie.fileName}\n\n${movie.caption}\n\n⏳ 10 min me delete ho jayegi\n\n⚡ Provide By Bunti\n      👑\n      R oyal`
     });
-    
     setTimeout(async () => {
       try { await ctx.deleteMessage(sent.message_id); } catch (e) {}
     }, 10 * 60 * 1000);
@@ -68,5 +69,5 @@ bot.on('text', async (ctx) => {
   bot.launch().then(() => console.log("Royal Bot Started..."));
 })();
 
-app.get('/', (req, res) => res.send('Bot is Live - Bunti R👑oyal'));
+app.get('/', (req, res) => res.send('Bot is Live 24x7 - Bunti R Royal'));
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
