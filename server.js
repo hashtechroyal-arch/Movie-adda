@@ -8,87 +8,95 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 const PORT = process.env.PORT || 10000;
 
-// ✅ TERA FINAL LOGO LINK
-const WELCOME_PHOTO = 'https://i.ibb.co/qL5Cftzm/Chat-GPT-Image-Sep-30-2026-01-35-08-AM.png';
-const CHANNEL_LINK = 'https://t.me/Neoprimemovie';
-const CHANNEL_USERNAME = '@Neoprimemovie';
-
-if (!BOT_TOKEN) {
-  console.log('BOT_TOKEN missing in env!');
-}
-
 const bot = new Telegraf(BOT_TOKEN);
 
-// MongoDB Connect
-if (MONGO_URI) {
-  mongoose.connect(MONGO_URI).then(() => console.log('Mongo Connected ✅')).catch(e => console.log('Mongo Error:', e.message));
-}
+// Database
+const movieSchema = new mongoose.Schema({
+  name: String,
+  fileId: String,
+  caption: String,
+  fileName: String
+});
+const Movie = mongoose.model('Movie', movieSchema);
 
-// /start with LOGO
-bot.start(async (ctx) => {
-  try {
-    await ctx.replyWithPhoto(
-      { url: WELCOME_PHOTO },
-      {
-        caption: `👑 *Welcome to NeoPrime* 👑\n\n🎬 *Streaming Beyond Limits* 🎬\n\n✅ Latest Movies | Web Series | Netflix | Prime\n✅ Hindi Dubbed | 480p | 720p | 1080p\n\n🔍 *Koi bhi movie ka naam likho, mai turant bhej dunga!*\n\nExample: \`Animal, Jawan, Leo\``,
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.url('📢 Join NeoPrime Channel', CHANNEL_LINK)],
-          [Markup.button.callback('🔍 Search Movie', 'search_movie')]
-        ])
-      }
-    );
-  } catch (err) {
-    console.log('Photo error:', err.message);
-    await ctx.reply('👑 Welcome to NeoPrime 👑\n\n🔍 Koi bhi movie ka naam likho!');
-  }
+mongoose.connect(MONGO_URI).then(() => console.log("MongoDB Connected ✅")).catch(e => console.log(e));
+
+bot.start((ctx) => {
+  ctx.reply("👑 Royal Bot Live Hai!\n\nKoi bhi movie ka naam likho 👇\n\n⚜️ Provide By Bunti Royal ⚜️");
 });
 
-bot.action('search_movie', (ctx) => {
-  ctx.reply('🔍 Movie ka naam likho, jaise: Animal');
+// --- Jab tu movie bhejega channel me ---
+bot.on(['document', 'video'], async (ctx) => {
+  const file = ctx.message.document || ctx.message.video;
+  const fileId = file.file_id;
+  const fileName = file.file_name || ctx.message.caption || "movie";
+  const caption = ctx.message.caption || fileName;
+
+  await Movie.create({
+    name: (fileName + " " + caption).toLowerCase(),
+    fileId: fileId,
+    caption: caption,
+    fileName: fileName
+  });
+  console.log("Saved:", fileName);
 });
 
-// Movie Search Logic - Private + Group dono me
+// --- Jab koi movie search karega - TERI PHOTO JAISE HI ---
 bot.on('text', async (ctx) => {
-  const query = ctx.message.text;
+  const query = ctx.message.text.trim();
   if (query.startsWith('/')) return;
-  if (query.length < 2) return;
-  const cleanQuery = query.replace(/@\w+/g, '').trim();
-  if (!cleanQuery) return;
-  await ctx.reply(`🔍 *${cleanQuery}* search ho raha hai...`, { parse_mode: 'Markdown' });
-  await ctx.reply(`✅ *${cleanQuery}* ke liye click karo:`, {
-      parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.url(`🎬 ${cleanQuery} - Dekho`, CHANNEL_LINK)],
-        [Markup.button.url('📢 All Movies', CHANNEL_LINK)]
-      ])
-    }
+  const search = query.toLowerCase();
+
+  const movies = await Movie.find({ name: { $regex: search, $options: 'i' } }).limit(10);
+  if (movies.length === 0) return;
+
+  // Message 1: HERE I FOUND FOR
+  const foundMsg = await ctx.reply(
+    `📁 HERE I FOUND FOR ${query}\n\n⏰ 10 min me auto delete\n\n⚜️ Provide By Bunti Royal ⚜️`,
+    { reply_to_message_id: ctx.message.message_id }
   );
+
+  // Message 2: Send All Button
+  const sendAllMsg = await ctx.reply(
+    `📩 Send All (${movies.length}) Files 📩`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback(`📁 Send All (${movies.length}) Files 📁`, `sendall_${search}`)]
+    ])
+  );
+
+  let sentMessages = [foundMsg.message_id, sendAllMsg.message_id];
+
+  // Message 3: Saari Files
+  for (let movie of movies) {
+    let sent = await ctx.replyWithDocument(movie.fileId, {
+      caption: `${movie.fileName}\n\n${movie.caption}\n\n⏰ 10 min me delete\n\n⚜️ Provide By Bunti Royal ⚜️`
+    });
+    sentMessages.push(sent.message_id);
+  }
+
+  // 10 Minute me Auto Delete
+  setTimeout(async () => {
+    try {
+      for (let msgId of sentMessages) {
+        await ctx.deleteMessage(msgId).catch(() => {});
+      }
+    } catch (e) {}
+  }, 10 * 60 * 1000);
 });
 
-// Express Server for Render
-app.get('/', (req, res) => res.send('NeoPrime Bot Live 👑'));
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Send All Button pe click kare to
+bot.action(/sendall_(.+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const search = ctx.match[1];
+  const movies = await Movie.find({ name: { $regex: search, $options: 'i' } }).limit(10);
 
-// Bot launch - 409 fix final
-const launchBot = async (retries = 3) => {
-  try {
-    await bot.telegram.deleteWebhook({ dropPendingUpdates: true });
-    console.log('Old webhook deleted');
-    await new Promise(r => setTimeout(r, 3000));
-    await bot.launch({ dropPendingUpdates: true });
-    console.log('NeoPrime Bot Started with Logo 👑 ✅');
-  } catch (err) {
-    if (err.message.includes('409') && retries > 0) {
-      console.log(`409 Conflict, retrying... ${retries} left`);
-      await new Promise(r => setTimeout(r, 5000));
-      return launchBot(retries - 1);
-    }
-    console.log('Launch failed:', err.message);
+  for (let movie of movies) {
+    await ctx.replyWithDocument(movie.fileId, {
+      caption: `${movie.fileName}\n\n${movie.caption}\n\n⏰ 10 min me delete\n\n⚜️ Provide By Bunti Royal ⚜️`
+    });
   }
-};
-launchBot();
+});
 
-// Graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+bot.launch().then(() => console.log("Royal Bot Started..."));
+app.get('/', (req, res) => res.send('Bot is Live 24x7 - Bunti Royal'));
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
