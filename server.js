@@ -4,10 +4,12 @@ const express = require('express');
 require('dotenv').config();
 
 const app = express();
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const bot = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.TG_TOKEN);
 
 // MongoDB Connect
-mongoose.connect(process.env.MONGO_URI).then(()=> console.log("Mongo Connected"));
+       const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL || process.env.DATABASE_URL;
+if (!mongoUri) console.log("MONGO URI NOT FOUND! Check Render Env Variables");
+mongoose.connect(mongoUri).then(()=> console.log("Mongo Connected"));
 
 // Movie Schema
 const movieSchema = new mongoose.Schema({
