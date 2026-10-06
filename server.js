@@ -7,6 +7,7 @@ const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN);
 const CHANNEL_USERNAME = "@ProfessorSigAlpha";
 const CHANNEL_LINK = "https://t.me/ProfessorSigAlpha";
+const OWNER_ID = 1410150440; // 👑 Professor Bunti Royal - Owner Bypass
 
 const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL || process.env.DATABASE_URL;
 if (!mongoUri) console.log("MONGO URI NOT FOUND!");
@@ -52,12 +53,16 @@ async function saveMovie(ctx) {
 bot.on('channel_post', saveMovie);
 bot.on(['document', 'video'], saveMovie);
 
-// Force Subscribe Function
+// ✅ FIXED - Owner ko kabhi join nahi bolega
 async function isSubscribed(ctx) {
   try {
+    if (ctx.from.id === OWNER_ID) return true; // Owner Bypass
     const member = await ctx.telegram.getChatMember(CHANNEL_USERNAME, ctx.from.id);
     return ['creator','administrator','member'].includes(member.status);
-  } catch(e) { return false; }
+  } catch(e) {
+    console.log("Force Join Error (Bot Admin nahi hai): " + e.message);
+    return true; // Bot admin nahi hai toh sabko allow
+  }
 }
 
 bot.start((ctx) => ctx.reply('👑 Welcome to Movie Adda - By Professor Bunti Royal! Movie ka naam bhejo! 🎬'));
@@ -66,7 +71,6 @@ bot.hears(/(owner|malik|creator|kisne banaya|tumhe kisne banaya|tumhara malik|ba
   return ctx.reply('👑 *Mere Malik / Creator* 👑\n\n*Name:* Professor Bunti Royal ✨\n*Profession:* Civil Engineer 👷‍♂️ | Genius Developer 🧠\n\nMujhe Professor Bunti Royal ne banaya hai!\n\n🎯 सफलता का कोई शॉर्टकट नहीं होता। 💯🔥\n\n📢 Channel: @ProfessorSigAlpha', { parse_mode: 'Markdown' });
 });
 
-// 7 RULES ADDED
 bot.command('rules', (ctx) => {
   return ctx.reply(`📜 *7 RULES OF @ProfessorSigAlpha* 📜\n\n1️⃣ Channel Join Karna Compulsory Hai 🔒\n2️⃣ No Spam - Ek hi movie bar-bar mat mango ⛔\n3️⃣ Spelling Sahi Likho 🔍\n4️⃣ No Hi/Hello, Sirf Movie Naam Bhejo 🤫\n5️⃣ 10 Min Me Auto-Delete ⏳\n6️⃣ No 18+ Demand 🚫\n7️⃣ Respect Professor Bunti Royal 👑\n\n✅ Follow Karo, Enjoy Karo! 🎬`, { parse_mode: 'Markdown' });
 });
@@ -77,7 +81,7 @@ bot.on('text', async (ctx) => {
     if (!userQuery || userQuery.startsWith('/')) return;
     if (/(owner|malik|creator|kisne banaya|tumhe kisne banaya)/i.test(userQuery)) return;
 
-    // FORCE JOIN CHECK
+    // FORCE JOIN CHECK - Owner ko skip karega
     const joined = await isSubscribed(ctx);
     if (!joined) {
       return ctx.reply(`🔒 *Pehle Channel Join Karo!* 🔒\n\n📢 ${CHANNEL_LINK} join karo tabhi movie milegi!`, {
@@ -109,7 +113,6 @@ bot.on('text', async (ctx) => {
         reply_markup: { inline_keyboard: [[{ text: `🎬 ${bestMatch} ✅`, callback_data: `search_${bestMatch}` }]] }
       });
     } else {
-      // 🔥 YEHI WO GOOGLE BUTTON - PEHLE SE SET HAI 🔥
       return ctx.reply(`😝 Hello ${userQuery}\n\nI couldn't find any movie or series in that name.. 😐`, {
         reply_markup: {
           inline_keyboard: [[
