@@ -20,7 +20,6 @@ const movieSchema = new mongoose.Schema({
 });
 const Movie = mongoose.model('Movie', movieSchema);
 
-// --- Spelling Functions ---
 function editDistance(s1, s2) {
   s1 = s1.toLowerCase(); s2 = s2.toLowerCase();
   let costs = [];
@@ -45,7 +44,6 @@ function similarity(s1, s2) {
   return (longer.length - editDistance(longer, shorter)) / longer.length;
 }
 
-// --- 🔥🔥 YE WALA PART MISSING THA - AB SAVE KAREGA 🔥🔥 ---
 async function saveMovie(ctx) {
   try {
     const msg = ctx.channelPost || ctx.message;
@@ -54,17 +52,10 @@ async function saveMovie(ctx) {
     if (msg.document) fileId = msg.document.file_id;
     else if (msg.video) fileId = msg.video.file_id;
     else return;
-
     const caption = msg.caption || msg.text || "No Name";
-    const movieName = caption.split('\n')[0].trim(); // Pehli line hi naam hogi
-
+    const movieName = caption.split('\n')[0].trim();
     console.log(`FILE MILA: ${movieName} | ID: ${fileId}`);
-
-    const newMovie = new Movie({
-      name: movieName,
-      fileId: fileId,
-      caption: caption
-    });
+    const newMovie = new Movie({ name: movieName, fileId: fileId, caption: caption });
     await newMovie.save();
     console.log(`SAVED OK: ${movieName}`);
   } catch (e) {
@@ -72,11 +63,9 @@ async function saveMovie(ctx) {
   }
 }
 
-// Channel Post + Agar aap khud bot ko file bhejo tab bhi
 bot.on('channel_post', saveMovie);
 bot.on(['document', 'video'], saveMovie);
 
-// --- START ---
 bot.start((ctx) => {
   return ctx.reply('👑 Welcome to Movie Adda - By Professor Bunti Royal! Movie ka naam bhejo!');
 });
@@ -112,7 +101,14 @@ bot.on('text', async (ctx) => {
     if (bestMatch && bestScore > 0.3) {
       return ctx.reply(`⚠️ *Aapne spelling galat likhi hai!* ⚠️\n\nAapne search kiya: \`${userQuery}\`\n\nKya aapka matlab ye tha? 👇`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: `🎬 ${bestMatch} ✅`, callback_data: `search_${bestMatch}` }]] } });
     } else {
-      return ctx.reply(`🙏 *Sorry!* "${userQuery}" ye movie mere paas abhi nahi hai 😔\n\nJaise hi Professor Bunti Royal 👑 provide karenge, mai bhej dunga!`, { parse_mode: 'Markdown' });
+      // 🔥🔥 PHOTO WALA NAYA CODE ADD KIYA 🔥🔥
+      return ctx.reply(`😝 Hello ${userQuery}\n\nI couldn't find any movie or series in that name.. 😐`, {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: `🔍 CHECK SPELLING ON GOOGLE 🔍`, url: `https://www.google.com/search?q=${encodeURIComponent(userQuery + ' movie correct spelling')}` }
+          ]]
+        }
+      });
     }
   } catch (e) {
     console.log(e);
